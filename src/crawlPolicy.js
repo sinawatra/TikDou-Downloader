@@ -28,7 +28,9 @@ export function nextStep({
   if (captchaVisible) return wait('captcha');
 
   const refused = refusedForMs !== null && refusedForMs > REFUSED_GRACE_MS;
-  if (requiresLogin && !loggedIn && (refused || waitingForLogin)) return wait('login');
+  // Some sites stop loading for logged-out visitors without refusing anything.
+  const idle = idleMs > HINT_AFTER_MS;
+  if (requiresLogin && !loggedIn && (refused || waitingForLogin || idle)) return wait('login');
   if (waitingForLogin) return { action: 'reload', countsAsRetry: false };
   if (refused) {
     return reloads >= MAX_RELOADS ? finish('refused') : { action: 'reload', countsAsRetry: true };
@@ -36,6 +38,6 @@ export function nextStep({
 
   if (idleMs > GIVE_UP_AFTER_MS) return finish('stalled');
   // No scrolling here, in case this is a prompt the checks above don't recognize.
-  if (idleMs > HINT_AFTER_MS) return wait('idle');
+  if (idle) return wait('idle');
   return { action: 'scroll' };
 }

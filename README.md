@@ -1,6 +1,6 @@
 # Channel Downloader
 
-Paste a TikTok or Douyin channel link. A Chrome window opens and browses the channel, and its videos save to your computer without the platform's download watermark.
+Paste a TikTok or Douyin channel link, or a Facebook page. A Chrome window opens and browses the channel, and its videos save to your computer without the platform's download watermark.
 
 It runs entirely on your own computer. There is no server, account or tracking.
 
@@ -17,6 +17,7 @@ It runs entirely on your own computer. There is no server, account or tracking.
 |---|---|
 | TikTok on macOS | Tested on a real channel, no login needed |
 | Douyin | Built, but real downloads are **not tested yet**. Douyin needs a logged-in account to list a channel |
+| Facebook pages | Tested on a real page on macOS, logged in. Facebook needs a logged-in account to list more than a page's first few videos. Personal profiles are **not tested yet** |
 | Link Grabber for Douyin | Tested on a real channel on macOS with an Android emulator, no login needed. It gets only the videos Douyin shows logged-out visitors |
 | Windows and Linux | Written to work, but **not tested yet** |
 
@@ -60,7 +61,7 @@ npm install
    ```
 
 2. Open http://127.0.0.1:4599 in your browser.
-3. Paste a channel link, such as `https://www.tiktok.com/@name` or `https://www.douyin.com/user/MS4w...`.
+3. Paste a channel link, such as `https://www.tiktok.com/@name`, `https://www.douyin.com/user/MS4w...` or `https://www.facebook.com/name`.
 4. Optionally set **Max videos**. It counts only new downloads, and leaving it empty downloads the whole channel.
 5. Click **Download**. A separate Chrome window opens, so leave it open until the run finishes.
 
@@ -83,6 +84,15 @@ When a run ends, the page tells you whether it reached the end of the channel an
 ```
 
 `.channel.json` is the app's record of the channel. It's hidden on macOS and Linux, and you can leave it alone. A channel keeps its folder even if it's renamed.
+
+## Facebook pages
+
+Paste a page's link, such as `https://www.facebook.com/name` or `https://www.facebook.com/profile.php?id=123...`. The app opens the page's **Videos** tab and downloads every video listed there.
+
+- **Log in first:** without an account, Facebook shows only the page's first few videos and then a login box. Log in in the app's Chrome window when the page asks, and the run continues.
+- **Reels aren't included:** only the Videos tab is read, and Facebook lists most reels on a separate tab.
+- **720p at most:** the app saves the HD file Facebook offers for download in a browser, which has the sound built in. Facebook keeps sharper versions only as separate picture and sound streams, and the app doesn't combine those.
+- **Only the page's own videos:** videos shared from other pages are skipped.
 
 ## Link Grabber (Douyin without an account)
 

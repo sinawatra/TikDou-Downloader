@@ -1,6 +1,6 @@
 import { chromium } from 'playwright-core';
 import { nextStep, SCROLL_DELAY_MS } from './crawlPolicy.js';
-import { parseListResponse } from './platforms/index.js';
+import { listReader } from './platforms/index.js';
 
 const CAPTCHA_SELECTOR = '#captcha_container, .captcha_verify_container, .captcha-verify-container, [id^="captcha-verify"], iframe[src*="verifycenter"], iframe[src*="captcha"]';
 
@@ -47,12 +47,17 @@ export async function crawlChannel({
   let waitingForLogin = false;
   let reloads = 0;
 
-  const page = context.pages()[0] ?? await context.newPage();
-  page.on('response', async (response) => {
+  const reader = listReader(channel);
+  let page = context.pages()[0] ?? await context.newPage();
+  // On the context, so a page opened to replace a broken one is read too.
+  context.on('response', async (response) => {
     try {
-      if (new URL(response.url()).pathname !== platform.postsPath) return;
-      const body = parseListResponse(await response.text(), platform);
-      if (!body) {
+      const request = response.request();
+      const source = { url: response.url(), type: request.resourceType() };
+      if (!reader.wants(source)) return;
+      const list = reader.read({ ...source, text: await response.text(), requestBody: request.postData() });
+      if (list === undefined) return;
+      if (!list) {
         refusedSince ??= Date.now();
         return;
       }
@@ -61,9 +66,9 @@ export async function crawlChannel({
       reloads = 0;
       lastActivity = Date.now();
       if (platform.sendCookies) onCookies(await context.cookies());
-      for (const item of body[platform.listKey] ?? []) {
+      for (const item of list.items) {
         const id = platform.itemId(item);
-        if (!id || !platform.belongsTo(item, channel.id) || seen.has(id)) continue;
+        if (!id || seen.has(id)) continue;
         seen.add(id);
         const post = platform.classify(item);
         if (post.kind === 'video') {
@@ -74,16 +79,28 @@ export async function crawlChannel({
         }
       }
       // Set last: the main loop ends the crawl on this, so this page must be read first.
-      hasMore = Boolean(body[platform.hasMoreKey]);
+      if (list.hasMore !== undefined) hasMore = list.hasMore;
     } catch {
       // Responses cut off by navigation or closing the window are expected here.
     }
   });
 
   const messages = waitMessages(platform);
+  const openChannel = () => page.goto(channel.url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  // Opens the channel again rather than reloading, because logging in can
+  // leave the window on another page. A login can also detach the page from
+  // the app, so a failure gets one try in a fresh tab.
   const reloadPage = async () => {
     onStatus('Reloading channel…');
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+    try {
+      await openChannel();
+    } catch (error) {
+      if (closed || signal.aborted) throw error;
+      const broken = page;
+      page = await context.newPage();
+      await broken.close().catch(() => {});
+      await openChannel();
+    }
     lastActivity = Date.now();
   };
   const scrollPage = async () => {
@@ -96,7 +113,7 @@ export async function crawlChannel({
   try {
     onUserAgent(await page.evaluate(() => navigator.userAgent));
     onStatus('Opening channel…');
-    await page.goto(channel.url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await openChannel();
     lastActivity = Date.now();
 
     while (!closed && !signal.aborted) {
@@ -107,7 +124,7 @@ export async function crawlChannel({
         captchaVisible: await page.locator(CAPTCHA_SELECTOR).locator('visible=true').count().catch(() => 0) > 0,
         refusedForMs: refusedSince === null ? null : Date.now() - refusedSince,
         requiresLogin: platform.requiresLogin,
-        loggedIn: cookies.some((cookie) => cookie.name === 'sessionid' && cookie.value),
+        loggedIn: cookies.some((cookie) => cookie.name === platform.sessionCookie && cookie.value),
         waitingForLogin,
         reloads,
         idleMs: Date.now() - lastActivity,

@@ -49,6 +49,13 @@ test('login-only sites wait for login, then reload without using a retry', () =>
   assert.deepEqual(nextStep({ ...site, waitingForLogin: true, loggedIn: true }), { action: 'reload', countsAsRetry: false });
 });
 
+test('login-only sites ask for login when they stop loading for a logged-out visitor', () => {
+  const site = { ...browsing, requiresLogin: true };
+  assert.deepEqual(nextStep({ ...site, idleMs: HINT_AFTER_MS + 1 }), { action: 'wait', why: 'login' });
+  assert.deepEqual(nextStep({ ...site, idleMs: GIVE_UP_AFTER_MS + 1 }), { action: 'wait', why: 'login' });
+  assert.deepEqual(nextStep({ ...site, loggedIn: true, idleMs: HINT_AFTER_MS + 1 }), { action: 'wait', why: 'idle' });
+});
+
 test('sites without a login requirement never wait for login', () => {
   assert.equal(nextStep({ ...browsing, refusedForMs: refused }).why, undefined);
 });

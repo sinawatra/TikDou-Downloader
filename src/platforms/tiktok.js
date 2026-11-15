@@ -9,6 +9,7 @@ export const tiktok = {
   listKey: 'itemList',
   hasMoreKey: 'hasMore',
   requiresLogin: false,
+  sessionCookie: 'sessionid',
   // The page's own video requests carry these cookies, so downloads do too.
   sendCookies: true,
 

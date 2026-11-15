@@ -9,6 +9,7 @@ export const douyin = {
   listKey: 'aweme_list',
   hasMoreKey: 'has_more',
   requiresLogin: true,
+  sessionCookie: 'sessionid',
   sendCookies: false,
 
   matchUrl(url) {
